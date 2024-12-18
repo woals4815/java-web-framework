@@ -64,7 +64,8 @@ public class RequestHandler extends Thread {
                         params.get("name"),
                         params.get("email")
                 );
-                log.debug("new User {}", newUser.toString());
+                response302Redirect(out);
+                return;
             }
 
 
@@ -73,6 +74,19 @@ public class RequestHandler extends Thread {
 
             response200Header(dos, body.length);
             responseBody(dos, body);
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void response302Redirect(
+            OutputStream out
+            ) {
+        DataOutputStream dos = new DataOutputStream(out);
+        try {
+            dos.writeBytes("HTTP/1.1 302 Found \r\n");
+            dos.writeBytes("Location: /index.html \r\n");
+            dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
         }
