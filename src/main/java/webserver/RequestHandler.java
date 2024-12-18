@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import db.DataBase;
+import http.HttpRequest;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,12 +25,15 @@ public class RequestHandler extends Thread {
         this.connection = connectionSocket;
     }
 
+    private HttpRequest request;
+
     public void run() {
         log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
                 connection.getPort());
 
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()) {
             // TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
+            this.request = new HttpRequest(in);
 
             InputStreamReader inputStreamReader = new InputStreamReader(in, "UTF-8");
             BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
@@ -39,37 +43,19 @@ public class RequestHandler extends Thread {
                 return;
             }
 
-            String[] tokens = line.split(" ");
-
-            String method = tokens[0];
-            String url  = tokens[1];
-
-
-            int contentLength = 0;
+            String method = request.getMethod();
+            String url  = request.getUrl();
+            Map<String, String> parameters = request.getParameters();
+            Map<String, String> headers = request.getHeaders();
 
             Map<String, String> cookies = new HashMap<>();
 
-            while(!line.equals("")) {
-                log.debug("line: {}", line);
-                line = bufferedReader.readLine();
-
-                if(line.contains("Content-Length")) {
-                    HttpRequestUtils.Pair keyValue=  HttpRequestUtils.parseHeader(line);
-                    contentLength = Integer.parseInt(keyValue.getValue());
-                }
-                if (line.contains("Cookie")) {
-                    cookies = HttpRequestUtils.parseCookies(line.split(":")[1].trim());
-                }
-            }
-
             if(url.startsWith("/user/create")) {
-                String bodyMessage = IOUtils.readData(bufferedReader, contentLength);
-                Map<String, String> params = HttpRequestUtils.parseQueryString(bodyMessage);
                 User newUser = new User(
-                        params.get("userId"),
-                        params.get("password"),
-                        params.get("name"),
-                        params.get("email")
+                        parameters.get("userId"),
+                        parameters.get("password"),
+                        parameters.get("name"),
+                        parameters.get("email")
                 );
                 DataBase.addUser(newUser);
                 response302Redirect(out, "/index.html");
@@ -77,10 +63,8 @@ public class RequestHandler extends Thread {
             }
 
             if (url.startsWith("/user/login") && method.equals("POST")) {
-                String bodyMessage = IOUtils.readData(bufferedReader, contentLength);
-                Map<String, String> params = HttpRequestUtils.parseQueryString(bodyMessage);
-                User user = DataBase.findUserById(params.get("userId"));
-                if (user == null || !user.getPassword().equals(params.get("password")) ) {
+                User user = DataBase.findUserById(parameters.get("userId"));
+                if (user == null || !user.getPassword().equals(parameters.get("password")) ) {
                     responseResource(out, "/user/login_failed.html");
                     return;
                 }
