@@ -112,8 +112,30 @@ public class RequestHandler extends Thread {
                 responseBody(dos, body);
                 return;
             }
+            if (url.endsWith(".css")) {
+                log.debug("-------------css {}-------------", url);
+                byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
+                DataOutputStream dos = new DataOutputStream(out);
+                responseCSSHeader(dos, body.length);
+                responseBody(dos, body);
+                return;
+            }
             responseResource(out, url);
         } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
+    private void responseCSSHeader(
+            DataOutputStream dos,
+            int bodyLengh
+    ) {
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/css;charset=utf-8 \r\n");
+            dos.writeBytes("Content-Length: " + bodyLengh + " \r\n");
+            dos.writeBytes("\r\n");
+        }catch (IOException e) {
             log.error(e.getMessage());
         }
     }
