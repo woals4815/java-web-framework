@@ -11,6 +11,7 @@ import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
+import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -32,19 +33,31 @@ public class RequestHandler extends Thread {
             BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
             String line = bufferedReader.readLine();
 
+            if (line == null) {
+                return;
+            }
+
             String[] tokens = line.split(" ");
 
             String method = tokens[0];
             String url  = tokens[1];
 
-            while(!line.isEmpty()) {
+
+            int contentLength = 0;
+
+            while(!line.equals("")) {
+                log.debug("line: {}", line);
                 line = bufferedReader.readLine();
-                log.debug("line:  {}", line);
+
+                if(line.contains("Content-Length")) {
+                    HttpRequestUtils.Pair keyValue=  HttpRequestUtils.parseHeader(line);
+                    contentLength = Integer.parseInt(keyValue.getValue());
+                }
             }
 
             if(url.startsWith("/user/create")) {
-                String[] parsedTokens = url.split(Pattern.quote("?"));
-                Map<String, String> params = HttpRequestUtils.parseQueryString(parsedTokens[1]);
+                String bodyMessage = IOUtils.readData(bufferedReader, contentLength);
+                Map<String, String> params = HttpRequestUtils.parseQueryString(bodyMessage);
                 User newUser = new User(
                         params.get("userId"),
                         params.get("password"),
