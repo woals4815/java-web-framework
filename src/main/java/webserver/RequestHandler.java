@@ -3,6 +3,7 @@ package webserver;
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -46,6 +47,8 @@ public class RequestHandler extends Thread {
 
             int contentLength = 0;
 
+            Map<String, String> cookies = new HashMap<>();
+
             while(!line.equals("")) {
                 log.debug("line: {}", line);
                 line = bufferedReader.readLine();
@@ -53,6 +56,9 @@ public class RequestHandler extends Thread {
                 if(line.contains("Content-Length")) {
                     HttpRequestUtils.Pair keyValue=  HttpRequestUtils.parseHeader(line);
                     contentLength = Integer.parseInt(keyValue.getValue());
+                }
+                if (line.contains("Cookie")) {
+                    cookies = HttpRequestUtils.parseCookies(line.split(":")[1].trim());
                 }
             }
 
@@ -79,6 +85,31 @@ public class RequestHandler extends Thread {
                     return;
                 }
                 responseRedirectLoginSuccess(out, "/index.html");
+                return;
+            }
+            if (url.startsWith("/user/list")) {
+                String cookie = cookies.get("logined");
+                if (cookie == null) {
+                    response302Redirect(out, "/user/login.html");
+                    return;
+                }
+
+                Collection<User> users = DataBase.findAll();
+                StringBuilder sb = new StringBuilder();
+                sb.append("<table border='1'>");
+                for(User user : users) {
+                    sb.append("<tr>");
+                    sb.append("<td>" + user.getUserId() + "</td>");
+                    sb.append("<td>" + user.getName() + "</td>");
+                    sb.append("<td>" + user.getEmail() + "</td>");
+                    sb.append("</tr>");
+                }
+                sb.append("</table>");
+                byte[] body = sb.toString().getBytes();
+                DataOutputStream dos = new DataOutputStream(out);
+
+                response200Header(dos, body.length);
+                responseBody(dos, body);
                 return;
             }
             responseResource(out, url);
