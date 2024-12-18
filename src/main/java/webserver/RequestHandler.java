@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import db.DataBase;
 import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,14 +65,35 @@ public class RequestHandler extends Thread {
                         params.get("name"),
                         params.get("email")
                 );
-                response302Redirect(out);
+                DataBase.addUser(newUser);
+                response302Redirect(out, "/index.html");
                 return;
             }
 
+            if (url.startsWith("/user/login") && method.equals("POST")) {
+                String bodyMessage = IOUtils.readData(bufferedReader, contentLength);
+                Map<String, String> params = HttpRequestUtils.parseQueryString(bodyMessage);
+                User user = DataBase.findUserById(params.get("userId"));
+                if (user == null || !user.getPassword().equals(params.get("password")) ) {
+                    responseResource(out, "/user/login_failed.html");
+                    return;
+                }
+                responseRedirectLoginSuccess(out, "/index.html");
+                return;
+            }
+            responseResource(out, url);
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
 
-            DataOutputStream dos = new DataOutputStream(out);
+    private void responseResource(
+            OutputStream out,
+            String url
+    ) {
+        DataOutputStream dos = new DataOutputStream(out);
+        try {
             byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
-
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
@@ -79,13 +101,26 @@ public class RequestHandler extends Thread {
         }
     }
 
+    private void responseRedirectLoginSuccess(OutputStream out, String url) throws IOException {
+        DataOutputStream dos = new DataOutputStream(out);
+        try {
+            dos.writeBytes("HTTP/1.1 302 Found \r\n");
+            dos.writeBytes("Location: " + url + " \r\n");
+            dos.writeBytes("Set-Cookie: " + "logined=true; Path=/" + " \r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+
     private void response302Redirect(
-            OutputStream out
+            OutputStream out,
+            String url
             ) {
         DataOutputStream dos = new DataOutputStream(out);
         try {
             dos.writeBytes("HTTP/1.1 302 Found \r\n");
-            dos.writeBytes("Location: /index.html \r\n");
+            dos.writeBytes("Location: " + url + " \r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
