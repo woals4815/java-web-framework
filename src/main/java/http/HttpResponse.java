@@ -55,6 +55,7 @@ public class HttpResponse {
     private void writeHeaders() throws IOException {
         Set<String> keys = this.headers.keySet();
         for (String key : keys) {
+            log.debug(key + ": " + this.headers.get(key));
             String value = headers.get(key);
             dos.writeBytes(key + ": " + value + " \r\n");
         }

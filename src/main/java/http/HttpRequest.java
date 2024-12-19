@@ -54,6 +54,19 @@ public class HttpRequest {
     private void parseRequestLine(String line) {
         String[] tokens = line.split(" ");
         this.method = tokens[0];
+
+        String url = tokens[1];
+
+        int index = url.indexOf("?");
+
+        if (index != -1) {
+            String[] urlTokens = url.split(Pattern.quote("?"), 2);
+            this.url = urlTokens[0];
+            String queryPart = urlTokens[1];
+            Map<String, String> queryKeyValues = HttpRequestUtils.parseQueryString(queryPart);
+            this.parameters.putAll(queryKeyValues);
+            return;
+        }
         this.url = tokens[1];
     }
 
@@ -65,13 +78,6 @@ public class HttpRequest {
     }
 
     private void setParameters(BufferedReader bufferedReader) throws IOException {
-        int index = this.url.indexOf("?");
-        if (index != -1) {
-            String[] urlTokens = this.url.split(Pattern.quote("?"), 2);
-            String queryPart = urlTokens[1];
-            Map<String, String> queryKeyValues = HttpRequestUtils.parseQueryString(queryPart);
-            this.parameters.putAll(queryKeyValues);
-        }
         if (this.headers.get("Content-Length") != null) {
             String parameters = IOUtils.readData(bufferedReader, Integer.parseInt(this.headers.get("Content-Length")));
             Map<String, String> keyValues = HttpRequestUtils.parseQueryString(parameters);
