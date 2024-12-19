@@ -24,7 +24,7 @@ public class HttpRequestTest extends TestCase {
 
     @Test
     public void testGetUrl() {
-        assertEquals("/user/create?userId=유저아이디", request.getUrl());
+        assertEquals("/user/create", request.getUrl());
     }
 
     @Test
